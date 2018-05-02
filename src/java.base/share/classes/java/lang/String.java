@@ -2140,13 +2140,14 @@ public final class String
     public String replace(CharSequence target, CharSequence replacement) {
         String tgtStr = target.toString();
         String replStr = replacement.toString();
+        int tgtLen = tgtStr.length();
+        if (tgtLen == 0) return emptyReplace(replStr);
+
         int j = indexOf(tgtStr);
         if (j < 0) {
             return this;
         }
-        int tgtLen = tgtStr.length();
-        int tgtLen1 = Math.max(tgtLen, 1);
-        int thisLen = length();
+        final int thisLen = length();
 
         int newLenHint = thisLen - tgtLen + replStr.length();
         if (newLenHint < 0) {
@@ -2157,8 +2158,29 @@ public final class String
         do {
             sb.append(this, i, j).append(replStr);
             i = j + tgtLen;
-        } while (j < thisLen && (j = indexOf(tgtStr, j + tgtLen1)) > 0);
+        } while ((j = indexOf(tgtStr, i)) > 0);
         return sb.append(this, i, thisLen).toString();
+    }
+
+    /**
+     * Inserts replStr before and after each char of this string.
+     * Handles {@link #replace(CharSequence, CharSequence)} when target
+     * is empty.
+     */
+    private String emptyReplace(String replStr) {
+        final int thisLen = length();
+        int newLen = thisLen + (thisLen + 1) * replStr.length();
+        if (newLen < 0) throw new OutOfMemoryError();
+        if (newLen == thisLen) return this;
+        StringBuilder sb = new StringBuilder(newLen);
+        if (coder() == LATIN1) {
+            for (int i = 0; i < thisLen; i++)
+                sb.append(replStr).append(StringLatin1.getChar(value, i));
+        } else {
+            for (int i = 0; i < thisLen; i++)
+                sb.append(replStr).append(StringUTF16.getChar(value, i));
+        }
+        return sb.append(replStr).toString();
     }
 
     /**
